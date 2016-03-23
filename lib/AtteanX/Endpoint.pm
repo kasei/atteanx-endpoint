@@ -42,29 +42,6 @@ package AtteanX::Endpoint::ServerError {
 	has 'code' => (is => 'ro', isa => Int, default => 500);
 }
 
-=head1 NAME
-
-AtteanX::Endpoint - SPARQL Protocol Endpoint
-
-=head1 VERSION
-
-This document describes AtteanX::Endpoint version 0.001
-
-=head1 SYNOPSIS
-
-  use v5.14;
-  use Attean;
-
-=head1 DESCRIPTION
-
-The AtteanX::Endpoint class implements a PSGI SPARQL Protocol endpoint.
-
-=head1 METHODS
-
-=over 4
-
-=cut
-
 package Plack::App::AtteanX::Endpoint 0.001 {
 	use parent qw(Plack::Component);
 	use Plack::Request;
@@ -96,6 +73,63 @@ package Plack::App::AtteanX::Endpoint 0.001 {
 		return $resp->finalize;
 	}
 }
+
+=head1 NAME
+
+AtteanX::Endpoint - SPARQL 1.1 Protocol Endpoint
+
+=head1 VERSION
+
+This document describes AtteanX::Endpoint version 0.001
+
+=head1 SYNOPSIS
+
+  use v5.14;
+  use Attean;
+
+=head1 DESCRIPTION
+
+The AtteanX::Endpoint class implements a PSGI SPARQL Protocol endpoint.
+
+=head1 ATTRIBUTES
+
+=over 4
+
+=item C<< planner >>
+
+=item C<< model >>
+
+=item C<< conf >>
+
+A hash reference containing configuration data for the endpoint. For example:
+
+  {
+    endpoint  => {
+      service_description => {
+        named_graphs => 1,
+        default => 1,
+      },
+      html => {
+        embed_images => 1,
+        image_width => 200,
+        resource_links => 1,
+      },
+      load_data => 0,
+      update => 0,
+    }
+  }
+
+=item C<< graph >>
+
+The L<Attean::API::IRI> of the graph in the model that represents the default graph.
+
+=back
+
+=head1 METHODS
+
+=over 4
+
+=cut
 
 package AtteanX::Endpoint {
 	use Moo;
