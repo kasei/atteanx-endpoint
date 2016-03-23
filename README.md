@@ -1,7 +1,7 @@
 AtteanX-Store-DBI
 =================
 
-An Attean quadstore implementation based on relational databases.
+An Attean SPARQL 1.1 Endpoint implementation.
 
 Getting Help
 ------------
