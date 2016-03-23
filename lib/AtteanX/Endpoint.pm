@@ -114,7 +114,6 @@ package AtteanX::Endpoint {
 	use HTML::HTML5::Writer qw(DOCTYPE_XHTML_RDFA);
 	use Carp qw(croak);
 	use Types::Standard qw(ConsumerOf CodeRef HashRef ArrayRef Str Int);
-	use AtteanX::RDFQueryTranslator;
 # 	use IO::Handle;
 # 	use Digest::MD5 qw(md5_base64);
 # 	use XML::LibXML 1.70;
@@ -387,16 +386,16 @@ END
 				my $default_graphs	= [$graph];
 				my $planner	= $self->planner;
 # 				warn "Planning with default graphs:\n";
-				foreach my $g (@$default_graphs) {
-					warn $g->as_string . "\n";
-				}
+# 				foreach my $g (@$default_graphs) {
+# 					warn $g->as_string . "\n";
+# 				}
 				my $plan	= $planner->plan_for_algebra($algebra, $model, $default_graphs);
 # 				warn "Plan:\n" . $plan->as_string;
 				eval {
 					my $iter	= $plan->evaluate($model);
 					$response->status(200);
 					my $sclass	= Attean->negotiate_serializer(request_headers => $headers) // Attean->get_serializer('sparqlxml');
-					warn $sclass;
+# 					warn $sclass;
 					my $s		= $sclass->new();
 					$content	= $s->serialize_iter_to_bytes($iter);
 					my $stype	= $s->canonical_media_type;
@@ -441,7 +440,7 @@ END
 			}
 			close($wh);
 			my $body	= do { local($/) = undef; <$rh> };
-			warn "Compressed $orig bytes to " . length($body) . " bytes\n";
+# 			warn "Compressed $orig bytes to " . length($body) . " bytes\n";
 			$length		= bytes::length($body);
 			$response->headers->header('Content-Encoding' => 'gzip');
 			$response->headers->header('Content-Length' => $length);
