@@ -6,7 +6,6 @@ before_install:
 install:
   - "cpanm --quiet --notest Module::Install::AuthorTests"
   - "cpanm --quiet --notest Module::Install::DOAPChangeSets"
-  - "cpanm --quiet --notest "
   - "cpanm --quiet --notest Attean"
   - "cpanm --quiet --notest File::ShareDir"
   - "cpanm --quiet --notest HTML::HTML5::Parser"
