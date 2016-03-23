@@ -20,7 +20,7 @@
 my:project
 	a 						:Project ;
 	:name					"AtteanX::Endpoint" ;
-	:shortdesc				"A DBI-backed quadstore for Attean" ;
+	:shortdesc				"An Attean SPARQL 1.1 Endpoint implementation." ;
 	:programming-language	"Perl" ;
 	:created				"2016-02-27"^^xsd:date ;
 	:maintainer				my:developer ;
