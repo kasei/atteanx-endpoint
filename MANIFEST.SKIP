@@ -1,0 +1,9 @@
+cover_db
+.git
+.DS_Store
+.proverc
+Makefile
+MANIFEST.SKIP
+MYMETA.json
+MYMETA.yml
+
