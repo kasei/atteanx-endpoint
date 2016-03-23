@@ -8,7 +8,7 @@ use Plack::Request;
 use Plack::Builder;
 use Config::JFDI;
 use Carp qw(confess);
-use Attean::Endpoint;
+use AtteanX::Endpoint;
 use LWP::MediaTypes qw(add_type);
 
 add_type( 'application/rdf+xml' => qw(rdf xrdf rdfx) );
@@ -37,7 +37,7 @@ if (my $file = $ENV{RDF_ENDPOINT_FILE}) {
 			update		=> 1,
         }
     };
-} elsif ($config = eval { Config::JFDI->open( name => "Attean::Endpoint") }) {
+} elsif ($config = eval { Config::JFDI->open( name => "AtteanX::Endpoint") }) {
 } else {
 	$config	= {
 		store	=> "Memory",
@@ -61,7 +61,7 @@ if (exists $ENV{'PERLRDF_STORE'}) {
 	$config->{store} = $ENV{'PERLRDF_STORE'};
 }
 
-my $end		= Attean::Endpoint->new( $config );
+my $end		= AtteanX::Endpoint->new( $config );
 
 my $app	= sub {
     my $env 	= shift;
