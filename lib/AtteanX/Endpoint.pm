@@ -496,7 +496,10 @@ END
 		return $response;
 	}
 	
-=item C<< log_query ( $message ) >>
+=item C<< log_query ( $request, $sparql ) >>
+
+Log the C<< $sparql >> query string after having been parsed from the
+C<< $request >> but before evaluation.
 
 =cut
 
