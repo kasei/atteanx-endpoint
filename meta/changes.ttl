@@ -22,7 +22,7 @@ my:project
 	:name					"AtteanX::Endpoint" ;
 	:shortdesc				"An Attean SPARQL 1.1 Endpoint implementation." ;
 	:programming-language	"Perl" ;
-	:created				"2016-02-27"^^xsd:date ;
+	:created				"2016-03-25"^^xsd:date ;
 	:maintainer				my:developer ;
 	:homepage				<http://search.cpan.org/dist/AtteanX::Endpoint/> ;
 	:bug-database			<https://github.com/kasei/atteanx-endpoint/issues> ;
@@ -33,7 +33,7 @@ my:project
 
 my:v_0-001
 	a					:Version ;
-	dc:issued			"2016-03-23"^^xsd:date ;
+	dc:issued			"2016-03-25"^^xsd:date ;
 	:revision			"0.001" ;
 	dcs:changeset [
 		dcs:item
