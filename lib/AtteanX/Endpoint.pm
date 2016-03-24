@@ -158,6 +158,8 @@ package AtteanX::Endpoint {
 
 	our $VERSION	= 0.001;
 
+	with 'MooX::Log::Any';
+
 	has 'planner' => (
 		is => 'ro',
 		isa => ConsumerOf['Attean::API::QueryPlanner'],
@@ -497,6 +499,7 @@ END
 		my $self	= shift;
 		my $req		= shift;
 		my $message	= shift;
+		$self->log->info("SPARQL query:\n" . $message);
 		$self->_log( $req, { level => 'info', message => $message } );
 	}
 
@@ -508,6 +511,7 @@ END
 		my $self	= shift;
 		my $req		= shift;
 		my $message	= shift;
+		$self->log->error($message);
 		$self->_log( $req, { level => 'error', message => $message } );
 	}
 
