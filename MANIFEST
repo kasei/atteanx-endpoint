@@ -42,5 +42,6 @@ share/endpoint/www/js/undo.js
 share/endpoint/www/js/unittests.js
 share/endpoint/www/js/util.js
 t/00.load.t
+t/simple.t
 xt/pod-coverage.t
 xt/pod.t
