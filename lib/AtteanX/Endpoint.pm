@@ -569,7 +569,7 @@ __END__
 =head1 BUGS
 
 Please report any bugs or feature requests to through the GitHub web interface
-at L<https://github.com/kasei/attean/issues>.
+at L<https://github.com/kasei/atteanx-endpoint/issues>.
 
 =head1 SEE ALSO
 
@@ -581,7 +581,7 @@ Gregory Todd Williams  C<< <gwilliams@cpan.org> >>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2014 Gregory Todd Williams.
+Copyright (c) 2016 Gregory Todd Williams.
 This program is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
 
