@@ -30,3 +30,7 @@ install:
   - "cpanm --quiet --notest Types::Standard"
 script:
   - "perl Makefile.PL && make test"
+
+notifications:
+  irc: "irc://irc.perl.org/#perlrdf"
+
