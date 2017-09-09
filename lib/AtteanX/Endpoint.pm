@@ -144,13 +144,12 @@ package AtteanX::Endpoint {
 	use File::ShareDir qw(dist_dir);
 	use HTTP::Negotiate qw(choose);
 	use IO::Compress::Gzip qw(gzip);
-	use HTML::HTML5::Parser;
 	use HTML::HTML5::Writer qw(DOCTYPE_XHTML_RDFA);
 	use Carp qw(croak);
 	use Types::Standard qw(ConsumerOf CodeRef HashRef ArrayRef Str Int);
 # 	use IO::Handle;
 # 	use Digest::MD5 qw(md5_base64);
-# 	use XML::LibXML 1.70;
+ 	use XML::LibXML 1.70;
 # 	use RDF::RDFa::Generator 0.102;
 # 	use Hash::Merge::Simple qw/ merge /;
 # 	use Fcntl qw(:flock SEEK_END);
@@ -456,7 +455,7 @@ END
 			my $stype		= 'text/html';
 			my $dir			= $ENV{ATTEAN_ENDPOINT_SHAREDIR} || File::Spec->catdir((eval { dist_dir('AtteanX-Endpoint') } || 'share'), 'endpoint');
 			my $template	= File::Spec->catfile($dir, 'index.html');
-			my $parser		= HTML::HTML5::Parser->new;
+			my $parser		= XML::LibXML->new(validation => 0, suppress_errors => 1, no_network => 1, recover => 2);
 			my $doc			= $parser->parse_file( $template );
 # 			my $gen			= RDF::RDFa::Generator->new( style => 'HTML::Head');
 # 			$gen->inject_document($doc, $sdmodel);
