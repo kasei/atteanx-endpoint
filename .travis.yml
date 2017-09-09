@@ -8,7 +8,6 @@ install:
   - "cpanm --quiet --notest Module::Install::DOAPChangeSets"
   - "cpanm --quiet --notest Attean"
   - "cpanm --quiet --notest File::ShareDir"
-  - "cpanm --quiet --notest HTML::HTML5::Parser"
   - "cpanm --quiet --notest HTML::HTML5::Writer"
   - "cpanm --quiet --notest HTTP::Message::PSGI"
   - "cpanm --quiet --notest HTTP::Negotiate"

@@ -20,7 +20,6 @@ perl_version	'5.014';
 
 requires		'Attean'						=> 0.013;
 requires		'File::ShareDir'				=> 0;
-requires		'HTML::HTML5::Parser'			=> 0;
 requires		'HTML::HTML5::Writer'			=> 0;
 requires		'HTTP::Negotiate'				=> 0;
 requires		'IO::Compress::Gzip'			=> 0;
