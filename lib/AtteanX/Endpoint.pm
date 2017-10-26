@@ -6,6 +6,10 @@
 use v5.14;
 use warnings;
 
+package AtteanX::Endpoint {
+	our $VERSION	= "0.002";
+}
+
 package AtteanX::Error {
 	use Moo;
 	use Types::Standard qw(Str HashRef);
@@ -42,7 +46,7 @@ package AtteanX::Endpoint::ServerError {
 	has 'code' => (is => 'ro', isa => Int, default => 500);
 }
 
-package Plack::App::AtteanX::Endpoint 0.001 {
+package Plack::App::AtteanX::Endpoint 0.002 {
 	use parent qw(Plack::Component);
 	use Plack::Request;
 	
@@ -80,7 +84,7 @@ AtteanX::Endpoint - SPARQL 1.1 Protocol Endpoint
 
 =head1 VERSION
 
-This document describes AtteanX::Endpoint version 0.001
+This document describes AtteanX::Endpoint version 0.002
 
 =head1 SYNOPSIS
 
@@ -154,8 +158,6 @@ package AtteanX::Endpoint {
 # 	use Hash::Merge::Simple qw/ merge /;
 # 	use Fcntl qw(:flock SEEK_END);
 	use namespace::clean;
-
-	our $VERSION	= 0.001;
 
 	with 'MooX::Log::Any';
 
