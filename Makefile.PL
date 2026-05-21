@@ -35,6 +35,7 @@ requires		'namespace::clean'				=> 0;
 requires		'Plack'							=> 0;
 requires		'TryCatch'						=> 0;
 requires		'Types::Standard'				=> 0;
+requires		'Config::JFDI'					=> 0;
 
 resources(
 	'homepage'   => "https://metacpan.org/release/AtteanX-Endpoint/",
