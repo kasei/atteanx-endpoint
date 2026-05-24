@@ -5,45 +5,10 @@
 
 use v5.14;
 use warnings;
+use AtteanX::Endpoint::Error;
 
 package AtteanX::Endpoint {
 	our $VERSION	= "0.003";
-}
-
-package AtteanX::Error {
-	use Moo;
-	use Types::Standard qw(Str HashRef);
-	use namespace::clean;
-
-	has 'message'	=> (is => 'ro', isa => Str, required => 1);
-	has 'details'	=> (is => 'ro', isa => HashRef, default => sub { +{} });
-	has 'uri'		=> (is => 'ro', isa => Str);
-}
-
-package AtteanX::Endpoint::Error {
-	use Moo;
-	extends 'AtteanX::Error';
-	use Types::Standard qw(Int);
-	use namespace::clean;
-	has 'code' => (is => 'ro', isa => Int, required => 1);
-}
-
-package AtteanX::Endpoint::ClientError {
-	use Moo;
-	extends 'AtteanX::Endpoint::Error';
-	use Types::Standard qw(Int);
-	use namespace::clean;
-
-	has 'code' => (is => 'ro', isa => Int, default => 400);
-}
-
-package AtteanX::Endpoint::ServerError {
-	use Moo;
-	extends 'AtteanX::Endpoint::Error';
-	use Types::Standard qw(Int);
-	use namespace::clean;
-
-	has 'code' => (is => 'ro', isa => Int, default => 500);
 }
 
 package Plack::App::AtteanX::Endpoint 0.003 {
