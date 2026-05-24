@@ -247,6 +247,18 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
 		$self->_log( $req, { level => 'info' } );
 	}
 
+=item C<< log_error ( $message ) >>
+
+=cut
+
+	sub log_error {
+		my $self	= shift;
+		my $req		= shift;
+		my $message	= shift;
+		$self->log->error($message);
+		$self->_log( $req, { level => 'error', message => $message } );
+	}
+
 	sub _log {
 		my $self	= shift;
 		my $req		= shift;
