@@ -7,7 +7,7 @@ use v5.14;
 use warnings;
 
 package AtteanX::Endpoint {
-	our $VERSION	= "0.002";
+	our $VERSION	= "0.003";
 }
 
 package AtteanX::Error {
@@ -46,7 +46,7 @@ package AtteanX::Endpoint::ServerError {
 	has 'code' => (is => 'ro', isa => Int, default => 500);
 }
 
-package Plack::App::AtteanX::Endpoint 0.002 {
+package Plack::App::AtteanX::Endpoint 0.003 {
 	use parent qw(Plack::Component);
 	use Plack::Request;
 	
@@ -84,12 +84,11 @@ AtteanX::Endpoint - SPARQL 1.1 Protocol Endpoint
 
 =head1 VERSION
 
-This document describes AtteanX::Endpoint version 0.002
+This document describes AtteanX::Endpoint version 0.003
 
 =head1 SYNOPSIS
 
-  use v5.14;
-  use Attean;
+  plackup -p 9091 scripts/endpoint.psgi
 
 =head1 DESCRIPTION
 
@@ -112,11 +111,6 @@ A hash reference containing configuration data for the endpoint. For example:
       service_description => {
         named_graphs => 1,
         default => 1,
-      },
-      html => {
-        embed_images => 1,
-        image_width => 200,
-        resource_links => 1,
       },
       load_data => 0,
       update => 0,
@@ -769,7 +763,7 @@ Gregory Todd Williams  C<< <gwilliams@cpan.org> >>
 
 =head1 COPYRIGHT
 
-Copyright (c) 2016 Gregory Todd Williams.
+Copyright (c) Gregory Todd Williams.
 This program is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
 
