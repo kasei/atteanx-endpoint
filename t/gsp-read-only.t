@@ -8,39 +8,9 @@ no warnings 'redefine';
 use Attean::RDF;
 use AtteanX::Endpoint;
 use Test::WWW::Mechanize::PSGI;
+use Test::AtteanX::Endpoint;
 
-sub mech_for_nquads {
-	my $allow_update	= shift;
-	my $nquads			= shift;
-	my $config			= {
-		endpoint	=> {
-			service_description => {},
-			html				=> {},
-			load_data			=> 0,
-			update				=> $allow_update,
-		}
-	};
-
-	my $store	= Attean->get_store('Memory')->new();
-	my $model	= Attean::MutableQuadModel->new( store => $store );
-	my $graph	= iri('http://example.org/graph');
-	$model->load_triples('nquads', $graph => $nquads);
-
-
-	my $end		= AtteanX::Endpoint->new( model => $model, conf => $config, graph => $graph );
-	my $app	= sub {
-		my $env 	= shift;
-		my $req 	= Plack::Request->new($env);
-		my $resp	= $end->run( $req );
-		return $resp->finalize;
-	};
-
-	my $mech	= Test::WWW::Mechanize::PSGI->new(app => $app);
-	return $mech;
-}
-
-
-my $mech_ro	= mech_for_nquads(0, <<"END");
+my $mech_ro	= Test::AtteanX::Endpoint->mech_for_nquads(update => 0, <<"END");
 _:b <num> "0" .
 _:b <num> "1" <http://example.org/graph1> .
 _:b <num> "2" <http://example.org/graph2> .

@@ -149,6 +149,7 @@ package AtteanX::Endpoint {
 # 	use IO::Handle;
 # 	use Digest::MD5 qw(md5_base64);
  	use XML::LibXML 1.70;
+	use AtteanX::Endpoint::GraphStoreProtocol;
 # 	use RDF::RDFa::Generator 0.102;
 # 	use Hash::Merge::Simple qw/ merge /;
 # 	use Fcntl qw(:flock SEEK_END);
@@ -220,6 +221,7 @@ a response object.
 	sub run {
 		my $self	= shift;
 		my $req		= shift;
+		
 		try {
 			return $self->_run($req, @_);
 		}
@@ -271,7 +273,7 @@ a response object.
 		$server .= " " . $response->headers->header('Server') if defined($response->headers->header('Server'));
 		$response->headers->header('Server' => $server);
 
-		if ($req->path eq $endpoint_path or $req->path eq $gsp_path) {
+		if ($req->path eq $endpoint_path or substr($req->path, 0, length($gsp_path)) eq $gsp_path) {
 			# no-op
 		} else {
 			my $content;
@@ -296,151 +298,21 @@ END
 			return $response;
 		}
 	
+		my $ae		= $req->headers->header('Accept-Encoding') || '';
 		if ($req->path eq $endpoint_path) {
 			$self->_run_protocol($req, $response);
 		} else {
-			$self->_run_gsp($req, $response);
+			my $handler	= AtteanX::Endpoint::GraphStoreProtocol->new( model => $self->model, conf => $self->conf, graph => $self->graph );
+			my $content	= $handler->run($req, $response, $gsp_path);
+			$self->wrap_response_with_encoding($req, $response, $ae, $content);
 		}
-	}
-
-	sub get_gsp_graph {
-		my $self	= shift;
-		my $req		= shift;
-		my $query     = $req->parameters;
-		if ($req->query_string eq 'default') {
-			my $default	= $self->graph;
-			return $default;
-		} elsif (my $g = $req->param('graph')) {
-			return iri($g);
-		}
-		return;
-	}
-	
-	sub _run_gsp {
-		my $self	= shift;
-		my $req		= shift;
-		my $response	= shift;
-
-		my $config	= $self->{conf};
-		my $model	= $self->{model};
-		my $headers	= $req->headers;
-		my $type	= $headers->header('Accept') || 'application/sparql-results+xml';
-		if (my $t = $req->param('media-type')) {
-			$type	= $t;
-			$headers->header('Accept' => $type);
-		}
-
-		my $ae		= $req->headers->header('Accept-Encoding') || '';
-		my $graph	= $self->get_gsp_graph($req); # TODO
-		unless ($graph) {
-			die AtteanX::Endpoint::ClientError->new(
-				code => 400,
-				message => 'No graph specified', uri => 'http://id.kasei.us/rdf-endpoint/error/gsp_no_graph'
-			);
-		}
-		my $base	= $req->base;
-		my $parser	= Attean->get_parser('SPARQL')->new(base => $base);
-		my $algebra;
-		my $content;
-		if ($req->method eq 'GET' or $req->method eq 'HEAD') {
-			my $sparql		= 'CONSTRUCT WHERE { ?s ?p ?o }';
-			($algebra)	= eval { $parser->parse($sparql, base => $base) };
-			$self->log_gsp_request( $req );
-			if ($@ or not($algebra)) {
-				my $error	= $@ || 'Internal error';
-				$self->log_error( $req, $error );
-				my $eclass	= ($error =~ /Syntax/) ? 'AtteanX::Endpoint::ClientError' : 'AtteanX::Endpoint::ServerError';
-				die $eclass->new(message => 'SPARQL GSP parse error', uri => 'http://id.kasei.us/rdf-endpoint/error/parse_error', details => { error => $error });
-			}
-		} else {
-			unless ($config->{endpoint}{update}) {
-				die AtteanX::Endpoint::ClientError->new(code => 405, message => 'Method not allowed', uri => 'http://id.kasei.us/rdf-endpoint/error/bad_http_method');
-			}
-			if ($req->method eq 'PUT' or $req->method eq 'POST') {
-				my $ct		= $req->headers->header('Content-Type');
-				unless ($ct) {
-					die AtteanX::Endpoint::ClientError->new(
-						code => 400,
-						message => 'No Content-Type specified for PUT request', uri => 'http://id.kasei.us/rdf-endpoint/error/gsp_no_media_type'
-					);
-				}
-				my $pclass	= Attean->get_parser(media_type => $ct);
-				unless ($pclass) {
-					die AtteanX::Endpoint::ClientError->new(
-						code => 400,
-						message => "No parser available for media type $ct", uri => 'http://id.kasei.us/rdf-endpoint/error/gsp_unrecognized_media_type'
-					);
-				}
-				my $parser	= $pclass->new();
-				my $iter = $parser->parse_iter_from_io($req->body);
-				
-				my @ops;
-				if ($req->method eq 'PUT') {
-					my $drop	= Attean::Algebra::Clear->new(drop => 1, silent => 1, target => 'GRAPH', graph => $graph);
-					push(@ops, $drop);
-				}
-				my $insert	= Attean::Algebra::Modify->new(insert => [$iter->as_quads($graph)->elements]);
-				push(@ops, $insert);
-				my $seq		= Attean::Algebra::Sequence->new(children => \@ops);
-	# 			warn $seq->as_string;
-				$algebra	= $seq;
-			} elsif ($req->method eq 'DELETE') {
-				$algebra	= Attean::Algebra::Clear->new(drop => 1, silent => 1, target => 'GRAPH', graph => $graph);
-			} else {
-				die AtteanX::Endpoint::ClientError->new(
-					code => 400,
-					message => "Unsupported HTTP method: " . $req->method, uri => 'http://id.kasei.us/rdf-endpoint/error/gsp_unrecognized_http_method'
-				);
-			}
-		}
-
-		if ($self->log->is_trace) {
-			$self->log->trace("Algebra:\n" . $algebra->as_string);
-		}
-		my $default_graphs	= [$graph];
-		my $planner	= $self->planner;
-		if ($self->log->is_trace) {
-			$self->log->debug('Planning with default graphs:');
-			foreach my $g (@$default_graphs) {
-				$self->log->trace($g->as_string);
-			}
-		}
-
-		my $plan	= $planner->plan_for_algebra($algebra, $model, $default_graphs);
-		if ($self->log->is_debug) {
-			$self->log->debug("Plan:\n" . $plan->as_string);
-		}
-		eval {
-			my $iter	= $plan->evaluate($model);
-			$response->status(200);
-			if ($req->method eq 'GET' or $req->method eq 'HEAD') { # RDF content
-				my $sclass	= Attean->negotiate_serializer(request_headers => $headers, role => 'Attean::API::TripleSerializer') // Attean->get_serializer('ntriples');
-				my @args;
-				$self->log->debug("Serializer class: $sclass");
-				my $s		= $sclass->new(@args);
-				my $stype	= $s->canonical_media_type;
-				if ($req->method eq 'GET') {
-					$content	= $s->serialize_iter_to_bytes($iter);
-				}
-				$response->headers->content_type($stype);
-			} else {
-				$response->headers->content_type('text/plain');
-				$content	= "OK\n";
-			}
-		};
-		if ($@) {
-			my $error	= $@;
-			$self->log->fatal($error);
-			die AtteanX::Endpoint::ServerError->new(code => 500, message => 'SPARQL GSP execution error', uri => 'http://id.kasei.us/rdf-endpoint/error/execution_error', details => { error => $@ });
-		}
-	
-		$self->wrap_response_with_encoding($req, $response, $ae, $content);
 		return $response;
 	}
-	
+
 	sub _run_protocol {
 		my $self	= shift;
 		my $req		= shift;
+		my $env		= $req->env;
 		my $response	= shift;
 
 		my $config	= $self->{conf};
@@ -686,13 +558,6 @@ C<< $request >> but before evaluation.
 		$self->_log( $req, { level => 'info', message => $message } );
 	}
 
-	sub log_gsp_request {
-		my $self	= shift;
-		my $req		= shift;
-		$self->log->info("GSP query:\n" . $req->method);
-		$self->_log( $req, { level => 'info' } );
-	}
-
 =item C<< log_error ( $message ) >>
 
 =cut
@@ -752,10 +617,6 @@ __END__
 
 Please report any bugs or feature requests to through the GitHub web interface
 at L<https://github.com/kasei/atteanx-endpoint/issues>.
-
-=head1 SEE ALSO
-
-L<http://www.perlrdf.org/>
 
 =head1 AUTHOR
 
