@@ -77,6 +77,7 @@ package AtteanX::Endpoint::Protocol 0.003 {
 		my $sparql;
 		my $content;
 		my $ct	= $req->header('Content-type');
+		my $is_update	= 0;
 		if ($req->method !~ /^(GET|POST)$/i) {
 			my $method	= uc($req->method);
 			$content	= "Unexpected method $method (expecting GET or POST)";
@@ -86,6 +87,7 @@ package AtteanX::Endpoint::Protocol 0.003 {
 		} elsif (defined($ct) and $ct eq 'application/sparql-query') {
 			$sparql	= $req->content;
 		} elsif (defined($ct) and $ct eq 'application/sparql-update') {
+			$is_update	= 1;
 			if ($config->{endpoint}{update} and $req->method eq 'POST') {
 				$sparql	= $req->content;
 			}
@@ -99,6 +101,7 @@ package AtteanX::Endpoint::Protocol 0.003 {
 				$sparql = $sparql[0];
 			}
 		} elsif ($req->param('update')) {
+			$is_update	= 1;
 			my @sparql	= $req->param('update');
 			if (scalar(@sparql) > 1) {
 				$content	= "More than one update string submitted";
@@ -124,8 +127,8 @@ package AtteanX::Endpoint::Protocol 0.003 {
 		
 			my $protocol_specifies_update_dataset	= 0;
 			{
-				my @default	= $req->param('default-graph-uri');
-				my @named	= $req->param('named-graph-uri');
+				my @default	= $req->parameters->get_all('default-graph-uri');
+				my @named	= $req->parameters->get_all('named-graph-uri');
 				if (scalar(@default) or scalar(@named)) {
 					delete $args{ load_data };
 					# TODO: handle custom-dataset
@@ -141,8 +144,8 @@ package AtteanX::Endpoint::Protocol 0.003 {
 			}
 		
 			{
-				my @default	= $req->param('using-graph-uri');
-				my @named	= $req->param('using-named-graph-uri');
+				my @default	= $req->parameters->get_all('using-graph-uri');
+				my @named	= $req->parameters->get_all('using-named-graph-uri');
 				if (scalar(@named) or scalar(@default)) {
 					$protocol_specifies_update_dataset	= 1;
 					# TODO: handle custom-dataset
@@ -207,25 +210,39 @@ package AtteanX::Endpoint::Protocol 0.003 {
 						$headers->remove_header('Accept');
 					}
 					
-					my $sclass	= Attean->negotiate_serializer(request_headers => $headers, role => 'Attean::API::ResultSerializer') // Attean->get_serializer('sparqlxml');
-					my @args;
-					if ($sclass eq 'AtteanX::Serializer::SPARQLHTML') {
-						push(@args, head => <<"END");
-							<style>
-								table, th, td {
-									border: 1px solid #000;
-								}
-								table {
-									border-collapse: collapse;
-								}
-							</style>
+					my $is_ask		= $algebra->child->isa('Attean::Algebra::Ask');
+					my $is_rdf		= $algebra->child->isa('Attean::Algebra::Construct') or $algebra->child->isa('Attean::Algebra::Describe');
+					
+					if ($is_update) {
+						$content	= "OK\n";
+						$response->headers->content_type('text/plain');
+					} else {
+						my $role	= $is_rdf ? 'Attean::API::TripleSerializer' : 'Attean::API::ResultSerializer';
+						my $default	= $is_rdf ? 'ntriples' : 'sparqlxml';
+						my %args;
+						if ($is_ask) {
+							$args{restrict}	= ['AtteanX::Serializer::SPARQLJSON', 'AtteanX::Serializer::SPARQLXML'];
+						}
+						my $sclass	= eval { Attean->negotiate_serializer(request_headers => $headers, role => $role, %args) } // Attean->get_serializer($default);
+						my @args;
+						if ($sclass eq 'AtteanX::Serializer::SPARQLHTML') {
+							push(@args, head => <<"END");
+								<style>
+									table, th, td {
+										border: 1px solid #000;
+									}
+									table {
+										border-collapse: collapse;
+									}
+								</style>
 END
+						}
+						$self->log->debug("Serializer class: $sclass");
+						my $s		= $sclass->new(@args);
+						$content	= $s->serialize_iter_to_bytes($iter);
+						my $stype	= $s->canonical_media_type;
+						$response->headers->content_type($stype);
 					}
-					$self->log->debug("Serializer class: $sclass");
-					my $s		= $sclass->new(@args);
-					$content	= $s->serialize_iter_to_bytes($iter);
-					my $stype	= $s->canonical_media_type;
-					$response->headers->content_type($stype);
 				};
 				if ($@) {
 					my $error	= $@;

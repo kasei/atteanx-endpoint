@@ -38,6 +38,7 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
 	use Moo;
 	use Attean;
 	use Attean::RDF qw(iri);
+	use UUID::Tiny ':std';
 	use Types::Standard qw(ConsumerOf CodeRef HashRef ArrayRef Str Int);
 	use namespace::clean;
 
@@ -72,7 +73,7 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
 		}
 
 # 		my $ae		= $req->headers->header('Accept-Encoding') || '';
-		my $graph	= $self->get_gsp_graph($req, $gsp_path);
+		my ($graph, $new)	= $self->get_gsp_graph($req, $gsp_path);
 		unless ($graph) {
 			die AtteanX::Endpoint::ClientError->new(
 				code => 400,
@@ -100,41 +101,55 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
 			}
 			if ($req->method eq 'PUT' or $req->method eq 'POST') {
 				my $ct		= $req->headers->header('Content-Type');
+				
 				unless ($ct) {
 					die AtteanX::Endpoint::ClientError->new(
 						code => 400,
 						message => 'No Content-Type specified for PUT request', uri => 'http://id.kasei.us/rdf-endpoint/error/gsp_no_media_type'
 					);
 				}
-				my $pclass	= Attean->get_parser(media_type => $ct);
-				unless ($pclass) {
-					die AtteanX::Endpoint::ClientError->new(
-						code => 400,
-						message => "No parser available for media type $ct", uri => 'http://id.kasei.us/rdf-endpoint/error/gsp_unrecognized_media_type'
-					);
+
+				if ($req->method eq 'POST' and $ct =~ m#^multipart/form-data#) {
+					my $uploads	= $req->uploads;
+					my @ops;
+					foreach my $file (keys %$uploads) {
+						my $f	= $uploads->get($file);
+						my $ct	= $f->content_type;
+						open(my $fh, '<:utf8', $f->path);
+						my $insert	= $self->update_for_io($req, $graph, $ct, $fh);
+						push(@ops, $insert);
+					}
+					my $seq		= Attean::Algebra::Sequence->new(children => \@ops);
+					$algebra	= $seq;
+				} else {
+					my $pclass	= Attean->get_parser(media_type => $ct) // Attean->get_parser('turtle');
+					unless ($pclass) {
+						die AtteanX::Endpoint::ClientError->new(
+							code => 400,
+							message => "No parser available for media type $ct", uri => 'http://id.kasei.us/rdf-endpoint/error/gsp_unrecognized_media_type'
+						);
+					}
+					
+					my $parser	= $pclass->new();
+					my $iter = eval { $parser->parse_iter_from_io($req->body) };
+					if ($@) {
+						die AtteanX::Endpoint::ClientError->new(
+							code => 400,
+							message => "Failed to parse the body in GSP request: " . $req->method, uri => 'http://id.kasei.us/rdf-endpoint/error/gsp_body_syntax_error'
+						);
+					}
+					
+					my @ops;
+					if ($req->method eq 'PUT') {
+						my $drop	= Attean::Algebra::Clear->new(drop => 1, silent => 1, target => 'GRAPH', graph => $graph);
+						push(@ops, $drop);
+					}
+					my $insert	= Attean::Algebra::Modify->new(insert => [$iter->as_quads($graph)->elements]);
+					push(@ops, $insert);
+					my $seq		= Attean::Algebra::Sequence->new(children => \@ops);
+		# 			warn $seq->as_string;
+					$algebra	= $seq;
 				}
-				
-				my $parser	= $pclass->new();
-				my $iter = eval { $parser->parse_iter_from_io($req->body) };
-				if ($@) {
-					die $@;
-					warn $@;
-					die AtteanX::Endpoint::ClientError->new(
-						code => 400,
-						message => "Failed to parse the body in GSP request: " . $req->method, uri => 'http://id.kasei.us/rdf-endpoint/error/gsp_body_syntax_error'
-					);
-				}
-				
-				my @ops;
-				if ($req->method eq 'PUT') {
-					my $drop	= Attean::Algebra::Clear->new(drop => 1, silent => 1, target => 'GRAPH', graph => $graph);
-					push(@ops, $drop);
-				}
-				my $insert	= Attean::Algebra::Modify->new(insert => [$iter->as_quads($graph)->elements]);
-				push(@ops, $insert);
-				my $seq		= Attean::Algebra::Sequence->new(children => \@ops);
-	# 			warn $seq->as_string;
-				$algebra	= $seq;
 			} elsif ($req->method eq 'DELETE') {
 				$algebra	= Attean::Algebra::Clear->new(drop => 1, silent => 1, target => 'GRAPH', graph => $graph);
 			} else {
@@ -167,7 +182,9 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
 			ref($st) ? 0 : 1;
 		};
 		my $code;
-		if ($req->method eq 'PUT') {
+		if ($new) {
+			$code	= 201;
+		} elsif ($req->method eq 'PUT') {
 			$code	= $empty_graph ? 201 : 204;
 		} elsif ($req->method eq 'POST') {
 			$code	= 204;
@@ -200,6 +217,11 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
 				$content	= "OK\n";
 			}
 		};
+		
+		if ($new) {
+			$response->header('Location' => $graph->value);
+		}
+		
 		if ($@) {
 			my $error	= $@;
 			$self->log->fatal($error);
@@ -209,6 +231,38 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
 		$response->status($code);
 		$response->body($content);
 		return $content;
+	}
+	
+	sub update_for_io {
+		my $self	= shift;
+		my $req		= shift;
+		my $graph	= shift;
+		my $ct		= shift;
+		my $io		= shift;
+		my $pclass	= Attean->get_parser(media_type => $ct) // Attean->get_parser('turtle');
+		unless ($pclass) {
+			die AtteanX::Endpoint::ClientError->new(
+				code => 400,
+				message => "No parser available for media type $ct", uri => 'http://id.kasei.us/rdf-endpoint/error/gsp_unrecognized_media_type'
+			);
+		}
+		
+		my $parser	= $pclass->new();
+		my $iter = eval { $parser->parse_iter_from_io($io) };
+		if ($@) {
+			die AtteanX::Endpoint::ClientError->new(
+				code => 400,
+				message => "Failed to parse the body in GSP request: " . $req->method, uri => 'http://id.kasei.us/rdf-endpoint/error/gsp_body_syntax_error'
+			);
+		}
+		
+		my @ops;
+		if ($req->method eq 'PUT') {
+			my $drop	= Attean::Algebra::Clear->new(drop => 1, silent => 1, target => 'GRAPH', graph => $graph);
+			push(@ops, $drop);
+		}
+		my $insert	= Attean::Algebra::Modify->new(insert => [$iter->as_quads($graph)->elements]);
+		return $insert;
 	}
 	
 	sub get_gsp_graph {
@@ -221,23 +275,20 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
 		my $direct	= ((substr($req->path, 0, length($gsp_path)) eq $gsp_path) and not($req->param('graph')) and length($req->path) > length($gsp_path));
 		my $query     = $req->parameters;
 		my $g;
+		my $new		= 0;
 		if ($req->query_string eq 'default') {
-# 			warn 'DEFAULT';
 			my $default	= $self->graph;
 			$g	= $default;
 		} elsif (my $graph = $req->param('graph')) {
 			$g	= iri($graph);
-# 			warn "INDIRECT: " . $graph;
 		} elsif ($direct) {
 			my $uri	= "${scheme}://$host" . $req->path;
-# 			warn "DIRECT: $uri\n";
 			$g	= iri($uri);
 		} else {
-			warn "No graph parsed from request.";
-			return;
+			$g	= Attean::IRI->new('urn:uuid:' . uc(uuid_to_string(create_uuid())));
+			$new	= 1;
 		}
-# 		warn "GSP GRAPH: " . $g->value . "\n";
-		return $g;
+		return ($g, $new);
 	}
 
 	sub log_gsp_request {
