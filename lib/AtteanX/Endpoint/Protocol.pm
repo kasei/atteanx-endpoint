@@ -38,7 +38,10 @@ package AtteanX::Endpoint::Protocol 0.003 {
 	use Moo;
 	use Attean;
 	use Encode;
+	use Scalar::Util qw(blessed);
 	use Attean::RDF qw(iri);
+	use Attean::DatasetModel;
+	use UUID::Tiny ':std';
 	use Types::Standard qw(ConsumerOf CodeRef HashRef ArrayRef Str Int);
 	use HTML::HTML5::Writer qw(DOCTYPE_XHTML_RDFA);
 	use namespace::clean;
@@ -125,33 +128,88 @@ package AtteanX::Endpoint::Protocol 0.003 {
 			$args{ update }		= 1 if ($config->{endpoint}{update} and $req->method eq 'POST');
 			$args{ load_data }	= 1 if ($config->{endpoint}{load_data});
 		
+			my $base	= Attean::IRI->new( value => $req->base->as_string );
+			my $parser	= Attean->get_parser('SPARQL')->new(base => $base);
+			$parser->update(1) if ($args{update});
+			my ($algebra)	= eval { $args{update} ? $parser->parse_update($sparql, base => $base) : $parser->parse($sparql, base => $base) };
+			
+			if ($@ or not($algebra)) {
+				my $error	= $@ || 'Internal error';
+				$self->log_error( $req, $error );
+				my $eclass	= ($error =~ /Expect|Syntax/) ? 'AtteanX::Endpoint::ClientError' : 'AtteanX::Endpoint::ServerError';
+				if ($req->method ne 'POST' and $error =~ /read-only queries/sm) {
+					$error	= 'Updates must use a HTTP POST request.';
+					die $eclass->new(message => 'Updates must use a HTTP POST request', uri => 'http://id.kasei.us/rdf-endpoint/error/bad_http_method_update');
+				} else {
+					die $eclass->new(message => 'SPARQL query/update parse error', uri => 'http://id.kasei.us/rdf-endpoint/error/parse_error', details => { error => $error, sparql => $sparql });
+				}
+			}
+			
 			my $protocol_specifies_update_dataset	= 0;
+			my @default_graphs	= ($self->graph);
 			{
-				my @default	= $req->parameters->get_all('default-graph-uri');
-				my @named	= $req->parameters->get_all('named-graph-uri');
+				my @default	= map { iri($_) } $req->parameters->get_all('default-graph-uri');
+				my @named	= map { iri($_) } $req->parameters->get_all('named-graph-uri');
 				if (scalar(@default) or scalar(@named)) {
-					delete $args{ load_data };
-					# TODO: handle custom-dataset
-					$self->log->warn('custom query datasets not supported yet');
-# 					$model	= Attean::MutableQuadModel->new( store => Attean->get_store('Memory')->new() );
-# 					foreach my $url (@named) {
-# 						RDF::Trine::Parser->parse_url_into_model( $url, $model, context => iri($url) );
-# 					}
-# 					foreach my $url (@default) {
-# 						RDF::Trine::Parser->parse_url_into_model( $url, $model );
-# 					}
+					if ($is_update) {
+						if (scalar(@default)) {
+							die AtteanX::Endpoint::ClientError->new(
+								code => 400,
+								message => 'Unexpected default-graph-uri specified in update request',
+								uri => 'http://id.kasei.us/rdf-endpoint/error/invalid_update_dataset'
+							);
+						} else {
+							die AtteanX::Endpoint::ClientError->new(
+								code => 400,
+								message => 'Unexpected named-graph-uri specified in update request',
+								uri => 'http://id.kasei.us/rdf-endpoint/error/invalid_update_dataset'
+							);
+						}
+					}
+					$model	= Attean::MutableDatasetModel->new( model => $model, graphs => [@named, @default] );
+					@default_graphs	= scalar(@default) ? @default : (Attean::IRI->new('urn:uuid:' . uc(uuid_to_string(create_uuid())))); # some default graph that will not match any data
 				}
 			}
 		
+			my @update_default;
+			my @update_named;
 			{
-				my @default	= $req->parameters->get_all('using-graph-uri');
-				my @named	= $req->parameters->get_all('using-named-graph-uri');
-				if (scalar(@named) or scalar(@default)) {
+				@update_default	= map { iri($_) } $req->parameters->get_all('using-graph-uri');
+				@update_named	= map { iri($_) } $req->parameters->get_all('using-named-graph-uri');
+				if (scalar(@update_named) or scalar(@update_default)) {
+					if ($is_update) {
+						my $specifies_dataset	= 0;
+						$algebra->walk( prefix => sub {
+							my $a		= shift;
+							if ($a->isa('Attean::Algebra::Modify')) {
+								$specifies_dataset	||= $a->specifies_dataset;
+							}
+						});
+						if ($specifies_dataset) {
+							die AtteanX::Endpoint::ClientError->new(
+								code => 400,
+								message => 'Update request specifies dataset in both using-graph-uri/using-named-graph-uri parameter and USING/WITH clause',
+								uri => 'http://id.kasei.us/rdf-endpoint/error/update_specifies_multiple_datasets'
+							);
+						}
+					} else {
+						if (scalar(@update_default)) {
+							die AtteanX::Endpoint::ClientError->new(
+								code => 400,
+								message => 'Unexpected using-graph-uri specified in query request',
+								uri => 'http://id.kasei.us/rdf-endpoint/error/invalid_query_dataset'
+							);
+						} else {
+							die AtteanX::Endpoint::ClientError->new(
+								code => 400,
+								message => 'Unexpected using-named-graph-uri specified in query request',
+								uri => 'http://id.kasei.us/rdf-endpoint/error/invalid_query_dataset'
+							);
+						}
+					}
 					$protocol_specifies_update_dataset	= 1;
-					# TODO: handle custom-dataset
-					$self->log->warn('custom update datasets not supported yet');
-# 					$model	= RDF::Trine::Model::Dataset->new( $model );
-# 					$model->push_dataset( default => \@default, named => \@named );
+					$model	= Attean::MutableDatasetModel->new( model => $model, graphs => [@update_named, @update_default] );
+					@default_graphs	= scalar(@update_default) ? @update_default : (Attean::IRI->new('urn:uuid:' . uc(uuid_to_string(create_uuid())))); # some default graph that will not match any data
 				}
 			}
 		
@@ -164,34 +222,12 @@ package AtteanX::Endpoint::Protocol 0.003 {
 # 				}
 # 			}
 		
-			my $base	= $req->base;
-			my $parser	= Attean->get_parser('SPARQL')->new(base => $base);
-			$parser->update(1) if ($args{update});
-			my ($algebra)	= eval { $args{update} ? $parser->parse_update($sparql, base => $base) : $parser->parse($sparql, base => $base) };
-			if ($@ or not($algebra)) {
-				my $error	= $@ || 'Internal error';
-				$self->log_error( $req, $error );
-				my $eclass	= ($error =~ /Syntax/) ? 'AtteanX::Endpoint::ClientError' : 'AtteanX::Endpoint::ServerError';
-				if ($req->method ne 'POST' and $error =~ /read-only queries/sm) {
-					$error	= 'Updates must use a HTTP POST request.';
-					die $eclass->new(message => 'Updates must use a HTTP POST request', uri => 'http://id.kasei.us/rdf-endpoint/error/bad_http_method_update');
-				} else {
-					die $eclass->new(message => 'SPARQL query/update parse error', uri => 'http://id.kasei.us/rdf-endpoint/error/parse_error', details => { error => $error, sparql => $sparql });
-				}
-			} else {
+			{
 				$self->log_query( $req, $sparql );
-				# TODO: handle case where query specifies update dataset
-# 				if ($protocol_specifies_update_dataset and $query->specifies_update_dataset) {
-# 					my $method	= $req->method;
-# 					$content	= "Update operations cannot specify a dataset in both the query and with protocol parameters";
-# 					$self->log_error( $req, $content );
-# 					die AtteanX::Endpoint::ClientError->new(code => 400, message => 'Multiple datasets specified for update', uri => 'http://id.kasei.us/rdf-endpoint/error/update_specifies_multiple_datasets');
-# 				}
 				if ($self->log->is_trace) {
 					$self->log->trace("Algebra:\n" . $algebra->as_string);
 				}
-				my $graph	= $self->graph;
-				my $default_graphs	= [$graph];
+				my $default_graphs	= \@default_graphs;
 				my $planner	= $self->planner;
 				if ($self->log->is_trace) {
 					$self->log->debug('Planning with default graphs:');
@@ -206,12 +242,13 @@ package AtteanX::Endpoint::Protocol 0.003 {
 				eval {
 					my $iter	= $plan->evaluate($model);
 					$response->status(200);
-					if ($headers->header('Accept') eq '*/*') {
+					my $accept	= $headers->header('Accept');
+					if (defined($accept) and $accept eq '*/*') {
 						$headers->remove_header('Accept');
 					}
 					
 					my $is_ask		= $algebra->child->isa('Attean::Algebra::Ask');
-					my $is_rdf		= $algebra->child->isa('Attean::Algebra::Construct') or $algebra->child->isa('Attean::Algebra::Describe');
+					my $is_rdf		= ($algebra->child->isa('Attean::Algebra::Construct') or $algebra->child->isa('Attean::Algebra::Describe'));
 					
 					if ($is_update) {
 						$content	= "OK\n";

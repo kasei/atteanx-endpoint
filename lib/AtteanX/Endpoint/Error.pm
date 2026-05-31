@@ -58,10 +58,18 @@ package AtteanX::Endpoint::ClientError {
 package AtteanX::Endpoint::ServerError {
 	use Moo;
 	extends 'AtteanX::Endpoint::Error';
-	use Types::Standard qw(Int);
+	use Types::Standard qw(Int Str);
+	use Carp qw(longmess);
 	use namespace::clean;
 
 	has 'code' => (is => 'ro', isa => Int, default => 500);
+	has 'stacktrace'	=> (is => 'rw', isa => Str);
+	
+	sub BUILD {
+		my $self	= shift;
+		$self->stacktrace(longmess('stack trace'));
+	}
+	
 }
 
 1;
