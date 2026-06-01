@@ -123,6 +123,7 @@ package AtteanX::Endpoint::Protocol 0.003 {
 			}
 		}
 	
+		my $dir			= $ENV{ATTEAN_ENDPOINT_SHAREDIR} || File::Spec->catdir((eval { dist_dir('AtteanX-Endpoint') } || 'share'), 'endpoint');
 		if ($sparql) {
 			my %args;
 			$args{ update }		= 1 if ($config->{endpoint}{update} and $req->method eq 'POST');
@@ -261,24 +262,23 @@ package AtteanX::Endpoint::Protocol 0.003 {
 							$args{restrict}	= ['AtteanX::Serializer::SPARQLJSON', 'AtteanX::Serializer::SPARQLXML'];
 						}
 						my $sclass	= eval { Attean->negotiate_serializer(request_headers => $headers, role => $role, %args) } // Attean->get_serializer($default);
-						my @args;
 						if ($sclass eq 'AtteanX::Serializer::SPARQLHTML') {
-							push(@args, head => <<"END");
-								<style>
-									table, th, td {
-										border: 1px solid #000;
-									}
-									table {
-										border-collapse: collapse;
-									}
-								</style>
-END
+							my $s		= $sclass->new(full_document => 0);
+							my $table	= $s->serialize_iter_to_bytes($iter);
+							my $tpath	= File::Spec->catfile($dir, 'templates', 'results.html');
+							my $template	= do { local($/); open(my $fh, '<:utf8', $tpath); <$fh> };
+							
+							$template	=~ s/\$RESULTS\$\E/$table/sm;
+							$template	=~ s/\$QUERY\$\E/$sparql/sm;
+							$content	= $template;
+							my $stype	= $s->canonical_media_type;
+							$response->headers->content_type($stype);
+						} else {
+							my $s		= $sclass->new();
+							$content	= $s->serialize_iter_to_bytes($iter);
+							my $stype	= $s->canonical_media_type;
+							$response->headers->content_type($stype);
 						}
-						$self->log->debug("Serializer class: $sclass");
-						my $s		= $sclass->new(@args);
-						$content	= $s->serialize_iter_to_bytes($iter);
-						my $stype	= $s->canonical_media_type;
-						$response->headers->content_type($stype);
 					}
 				};
 				if ($@) {
@@ -293,7 +293,6 @@ END
 			die AtteanX::Endpoint::ClientError->new(message => 'Missing SPARQL Query/Update String', uri => 'http://id.kasei.us/rdf-endpoint/error/missing_sparql_string');
 		} else {
 			my $stype		= 'text/html';
-			my $dir			= $ENV{ATTEAN_ENDPOINT_SHAREDIR} || File::Spec->catdir((eval { dist_dir('AtteanX-Endpoint') } || 'share'), 'endpoint');
 			my $template	= File::Spec->catfile($dir, 'index.html');
 			my $parser		= XML::LibXML->new(validation => 0, suppress_errors => 1, no_network => 1, recover => 2);
 			my $doc			= $parser->parse_file( $template );

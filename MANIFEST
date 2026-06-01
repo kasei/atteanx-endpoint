@@ -20,7 +20,7 @@ meta/changes.ttl
 README.md
 scripts/endpoint.psgi
 share/endpoint/index.html
-share/endpoint/results.html
+share/endpoint/templates/results.html
 share/endpoint/www/css/docs.css
 share/endpoint/www/css/sparqlcolors.css
 share/endpoint/www/favicon.ico
