@@ -268,8 +268,8 @@ package AtteanX::Endpoint::Protocol 0.003 {
 							my $tpath	= File::Spec->catfile($dir, 'templates', 'results.html');
 							my $template	= do { local($/); open(my $fh, '<:utf8', $tpath); <$fh> };
 							
-							$template	=~ s/\$RESULTS\$\E/$table/sm;
-							$template	=~ s/\$QUERY\$\E/$sparql/sm;
+							$template	=~ s/\$RESULTS\$/$table/sm;
+							$template	=~ s/\$QUERY\$/$sparql/sm;
 							$content	= $template;
 							my $stype	= $s->canonical_media_type;
 							$response->headers->content_type($stype);
