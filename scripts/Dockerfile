@@ -7,16 +7,17 @@ RUN apt-get update; \
     ; \
     apt-get dist-clean
 
+ARG NO_NETWORK_TESTING=1
 RUN cpanm --installdeps Attean \
 	&& cpanm --installdeps AtteanX::Store::LMDB \
-	&& cpanm --installdeps AtteanX::Endpoint
-RUN cpanm AtteanX::Parser::JSONLD
+	&& cpanm --installdeps AtteanX::Endpoint \
+	&& cpanm Config::JFDI \
+	&& cpanm Plack::Middleware::LogErrors \
+	&& cpanm Reply::App
+
 RUN cpanm Attean \
 	&& cpanm AtteanX::Store::LMDB \
-	&& cpanm AtteanX::Endpoint
-RUN cpanm Config::JFDI
-RUN cpanm Reply::App
-RUN cpanm Plack::Middleware::LogErrors
+	&& cpanm AtteanX::Parser::JSONLD
 
 RUN cpanm Module::Install \
 	&& cpanm Module::Install::DOAPChangeSets \
