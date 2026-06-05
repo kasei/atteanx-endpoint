@@ -85,7 +85,6 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
 		my $algebra;
 		my $content;
 		if ($req->method eq 'GET' or $req->method eq 'HEAD') {
-			warn "GET for graph <" . $graph->value . ">\n";
 			my $sparql		= 'CONSTRUCT WHERE { ?s ?p ?o }';
 			($algebra)	= eval { $parser->parse($sparql, base => $base) };
 			$self->log_gsp_request( $req );
