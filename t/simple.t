@@ -68,4 +68,11 @@ subtest 'POST query for named graph' => sub {
 	$mech->content_unlike(qr#num#);
 };
 
+subtest 'invalid query leads to 4xx' => sub {
+	$mech->post('/sparql', Accept => 'application/sparql-results+xml', Content => ['query' => 'SELECT * WHERE {']);
+	cmp_ok( $mech->status, '>=', 400 );
+	cmp_ok( $mech->status, '<', 500 );
+	$mech->content_like(qr'parse error'i);
+};
+
 done_testing();
