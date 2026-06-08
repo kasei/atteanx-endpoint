@@ -21,12 +21,9 @@ install:
   - "cpanm --quiet --notest Plack"
   - "cpanm --quiet --notest Test::Exception"
   - "cpanm --quiet --notest Test::LWP::UserAgent"
-  - "cpanm --quiet --notest Test::Modern"
-  - "cpanm --quiet --notest Test::Moose"
   - "cpanm --quiet --notest Test::More"
-  - "cpanm --quiet --notest Test::Roo"
   - "cpanm --quiet --notest Test::WWW::Mechanize::PSGI"
-  - "cpanm --quiet --notest TryCatch"
+  - "cpanm --quiet --notest Try::Tiny"
   - "cpanm --quiet --notest Types::Standard"
 script:
   - "perl Makefile.PL && make test"

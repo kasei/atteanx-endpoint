@@ -62,7 +62,7 @@ package AtteanX::Endpoint {
 	use Moo;
 	use Attean;
 	use Attean::RDF qw(iri);
-	use TryCatch;
+	use Try::Tiny;
 	use JSON;
 	use Encode;
 	use Plack::Request;
@@ -156,7 +156,8 @@ a response object.
 		try {
 			return $self->_run($req, @_);
 		}
-		catch (AtteanX::Endpoint::Error $e) {
+		catch {
+			my $e		= $_;
 			my $resp	= Plack::Response->new;
 			my $code	= $e->code;
 			my $status	= $e->message;

@@ -12,10 +12,7 @@ author			'Gregory Todd Williams <gwilliams@cpan.org>';
 license			'perl';
 
 test_requires	'Test::Exception'				=> 0;
-test_requires	'Test::Modern'					=> 0;
-test_requires	'Test::Moose'					=> 0;
 test_requires	'Test::More'					=> 0.88;
-test_requires	'Test::Roo'						=> 0;
 test_requires	'HTTP::Message::PSGI'			=> 0;
 test_requires	'Test::LWP::UserAgent'			=> 0;
 test_requires	'Test::WWW::Mechanize::PSGI'	=> 0;
@@ -33,7 +30,7 @@ requires		'Moo'							=> 1.006000;
 requires		'MooX::Log::Any'				=> 0;
 requires		'namespace::clean'				=> 0;
 requires		'Plack'							=> 0;
-requires		'TryCatch'						=> 0;
+requires		'Try::Tiny'						=> 0;
 requires		'Types::Standard'				=> 0;
 requires		'Config::JFDI'					=> 0;
 
