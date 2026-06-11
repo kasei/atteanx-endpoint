@@ -26,6 +26,12 @@ SPARQL Graph Store Protocol.
 
 The L<Attean::API::IRI> of the graph in the model that represents the default graph.
 
+=item C<< model >>
+
+=item C<< conf >>
+
+=item C<< planner >>
+
 =back
 
 =head1 METHODS
@@ -55,6 +61,14 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
 	has 'model' => (is => 'ro', isa => ConsumerOf['Attean::API::Model'], required => 1);
 	has 'conf'	=> (is => 'ro', isa => HashRef, required => 1);
 	has 'graph'	=> (is => 'ro', isa => ConsumerOf['Attean::API::IRI'], required => 1);
+
+=item C<< run( $request, $response ) >>
+
+Extract the SPARQL Graph Store Protocol request from C<< $request >>, run the
+corresponding query/update, and populate C<< $response >> with results or error
+information.
+
+=cut
 
 	sub run {
 		my $self	= shift;
@@ -231,6 +245,14 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
 		$response->body($content);
 		return $content;
 	}
+
+=item C<< update_for_io( $request, $graph, $content_type, $io ) >>
+
+Parses RDF content of type C<< $content_type >> from C<< $io >>, and inserts
+it into the specified C<< $graph >>, clearing that graph first if
+C<< $request->method >> is 'PUT'.
+
+=cut
 	
 	sub update_for_io {
 		my $self	= shift;
@@ -263,7 +285,17 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
 		my $insert	= Attean::Algebra::Modify->new(insert => [$iter->as_quads($graph)->elements]);
 		return $insert;
 	}
-	
+
+=item C<< get_gsp_graph( $request ) >>
+
+Return a list C<< ( $g, $new ) >> of the graph identified by the GSP request
+(either directly- or indirectly-identified, or C<< $self->graph >> for the
+default graph), and a boolean flag indicating if the graph should be newly
+created (in the case of a POST to the GSP endpoint without identifying a
+graph).
+
+=cut
+
 	sub get_gsp_graph {
 		my $self	= shift;
 		my $req		= shift;
@@ -289,6 +321,12 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
 		}
 		return ($g, $new);
 	}
+
+=item C<< log_gsp_request( $request ) >>
+
+Log the request.
+
+=cut
 
 	sub log_gsp_request {
 		my $self	= shift;

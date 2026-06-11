@@ -26,6 +26,12 @@ SPARQL Protocol.
 
 The L<Attean::API::IRI> of the graph in the model that represents the default graph.
 
+=item C<< model >>
+
+=item C<< conf >>
+
+=item C<< planner >>
+
 =back
 
 =head1 METHODS
@@ -59,6 +65,13 @@ package AtteanX::Endpoint::Protocol 0.003 {
 	has 'model' => (is => 'ro', isa => ConsumerOf['Attean::API::Model'], required => 1);
 	has 'conf'	=> (is => 'ro', isa => HashRef, required => 1);
 	has 'graph'	=> (is => 'ro', isa => ConsumerOf['Attean::API::IRI'], required => 1);
+
+=item C<< run( $request, $response ) >>
+
+Extract the SPARQL Protocol request from C<< $request >>, run the corresponding
+query/update, and populate C<< $response >> with results or error information.
+
+=cut
 
 	sub run {
 		my $self	= shift;

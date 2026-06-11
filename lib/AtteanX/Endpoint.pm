@@ -243,6 +243,17 @@ END
 		return $response;
 	}
 
+=item C<< wrap_response_with_encoding ( $request, $response, $ae, $body ) >>
+
+If $ae includes 'gzip' as a requested Accept-Encoding value, and the body of
+$response (or $body) is non-empty, gzip-compress the content body, setting
+the response body to the new compressed data, and set Content-Encoding and
+Content-Length headers appropriately on $response. Otherwise, set the
+the response body to the uncompressed content, and set the Content-Length
+header on $response.
+
+=cut
+	
 	sub wrap_response_with_encoding {
 		my $self	= shift;
 		my $req		= shift;
