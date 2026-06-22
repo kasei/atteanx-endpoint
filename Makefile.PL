@@ -11,7 +11,7 @@ all_from		'lib/AtteanX/Endpoint.pm';
 author			'Gregory Todd Williams <gwilliams@cpan.org>';
 license			'perl';
 
-test_requires	'Test::Exception'				=> 0;
+test_requires	'Test::Exception'				=> 0.42;
 test_requires	'Test::More'					=> 0.88;
 test_requires	'HTTP::Message::PSGI'			=> 0;
 test_requires	'Test::LWP::UserAgent'			=> 0;
