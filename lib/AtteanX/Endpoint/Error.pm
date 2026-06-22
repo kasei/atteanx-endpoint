@@ -4,7 +4,7 @@ AtteanX::Endpoint::Error - Error classes for use with AtteanX::Endpoint
 
 =head1 VERSION
 
-This document describes AtteanX::Endpoint::Error version 0.003
+This document describes AtteanX::Endpoint::Error version 0.004
 
 =head1 SYNOPSIS
 
@@ -35,7 +35,7 @@ that will be translated into appropriate HTTP responses.
 use v5.14;
 use warnings;
 
-package AtteanX::Endpoint::Error {
+package AtteanX::Endpoint::Error 0.004 {
 	use Moo;
 	use Types::Standard qw(Str Int HashRef);
 	use namespace::clean;

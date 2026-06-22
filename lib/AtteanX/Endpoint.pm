@@ -12,7 +12,7 @@ AtteanX::Endpoint - SPARQL 1.1 Protocol Endpoint
 
 =head1 VERSION
 
-This document describes AtteanX::Endpoint version 0.003
+This document describes AtteanX::Endpoint version 0.004
 
 =head1 SYNOPSIS
 
@@ -58,7 +58,7 @@ The L<Attean::API::IRI> of the graph in the model that represents the default gr
 =cut
 
 package AtteanX::Endpoint {
-	our $VERSION	= "0.003";
+	our $VERSION	= "0.004";
 	use Moo;
 	use Attean;
 	use Attean::RDF qw(iri);
@@ -290,7 +290,7 @@ header on $response.
 	}
 }
 
-package Plack::App::AtteanX::Endpoint 0.003 {
+package Plack::App::AtteanX::Endpoint 0.004 {
 	use parent qw(Plack::Component);
 	use Plack::Request;
 	

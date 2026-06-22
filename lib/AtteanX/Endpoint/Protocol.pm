@@ -7,7 +7,7 @@ AtteanX::Endpoint::Protocol - SPARQL 1.1 Protocol
 
 =head1 VERSION
 
-This document describes AtteanX::Endpoint::Protocol version 0.003
+This document describes AtteanX::Endpoint::Protocol version 0.004
 
 =head1 SYNOPSIS
 
@@ -40,7 +40,7 @@ The L<Attean::API::IRI> of the graph in the model that represents the default gr
 
 =cut
 
-package AtteanX::Endpoint::Protocol 0.003 {
+package AtteanX::Endpoint::Protocol 0.004 {
 	use Moo;
 	use Attean;
 	use Encode;

@@ -4,7 +4,7 @@ Test::AtteanX::Endpoint - Shared code for testing AtteanX::Endpoint
 
 =head1 VERSION
 
-This document describes Test::AtteanX::Endpoint version 0.003
+This document describes Test::AtteanX::Endpoint version 0.004
 
 =head1 SYNOPSIS
 
@@ -26,7 +26,7 @@ use v5.14;
 use warnings;
 
 package Test::AtteanX::Endpoint {
-	our $VERSION	= "0.003";
+	our $VERSION	= "0.004";
 
 	use Attean::RDF;
 	use AtteanX::Endpoint;

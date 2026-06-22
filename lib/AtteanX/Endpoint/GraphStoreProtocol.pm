@@ -7,7 +7,7 @@ AtteanX::Endpoint::GraphStoreProtocol - SPARQL 1.1 Graph Store Protocol
 
 =head1 VERSION
 
-This document describes AtteanX::Endpoint::GraphStoreProtocol version 0.003
+This document describes AtteanX::Endpoint::GraphStoreProtocol version 0.004
 
 =head1 SYNOPSIS
 
@@ -40,7 +40,7 @@ The L<Attean::API::IRI> of the graph in the model that represents the default gr
 
 =cut
 
-package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
+package AtteanX::Endpoint::GraphStoreProtocol 0.004 {
 	use Moo;
 	use Attean;
 	use Attean::RDF qw(iri);
