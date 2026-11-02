@@ -1,0 +1,20 @@
+<endpoint>
+  <service_description>
+    named_graphs = 1
+    default = 1
+  </service_description>
+  load_data = 0
+  update = 0
+</endpoint>
+<store>
+  name = DBI
+  type = mysql
+  database = dbname
+  host = 127.0.0.1
+  port = 3306
+  user = dbuser
+  password = rootsecret
+</store>
+<dataset>
+  default = http://example.org/default-graph
+</dataset>
