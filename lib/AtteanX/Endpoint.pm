@@ -116,13 +116,25 @@ package AtteanX::Endpoint {
 			# ->new( \%conf )
 			my $conf		= shift @params;
 			my $store_conf	= $conf->{store};
-			my ($name_, $file)	= split(';', $store_conf, 2);
-			my ($name, @args)	= split('=', $name_);
-			my $sclass	= Attean->get_store($name);
-			my $store	= $sclass->new(@args);
+			my $store;
+			my $file;
+			if (ref($store_conf) eq 'HASH') {
+				my $name	= delete $store_conf->{name};
+				my $sclass	= Attean->get_store($name);
+				$store		= $sclass->new( %$store_conf );
+			} else {
+				(my $name_, $file)	= split(';', $store_conf, 2);
+				my ($name, @args)	= split('=', $name_);
+				my $sclass	= Attean->get_store($name);
+				$store	= $sclass->new(@args);
+			}
 			my $model	= Attean::MutableQuadModel->new( store => $store );
 			
-			my $graph	= Attean::IRI->new('http://example.org/graph');
+			my $guri	= 'http://example.org/default-graph';
+			if (my $dataset = $conf->{dataset}) {
+				$guri	= $dataset->{default};
+			}
+			my $graph	= Attean::IRI->new($guri);
 			if (defined($file) and length($file)) {
 				$graph		= Attean::IRI->new('file://' . File::Spec->rel2abs($file));
 				open(my $fh, '<:encoding(UTF-8)', $file) or die $!;
