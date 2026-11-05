@@ -159,12 +159,14 @@ query/update, and populate C<< $response >> with results or error information.
 				}
 			}
 			
+			my $protocol_specifies_query_dataset	= 0;
 			my $protocol_specifies_update_dataset	= 0;
 			my @default_graphs	= ($self->graph);
 			{
 				my @default	= map { iri($_) } $req->parameters->get_all('default-graph-uri');
 				my @named	= map { iri($_) } $req->parameters->get_all('named-graph-uri');
 				if (scalar(@default) or scalar(@named)) {
+					$protocol_specifies_query_dataset	= 1;
 					if ($is_update) {
 						if (scalar(@default)) {
 							die AtteanX::Endpoint::ClientError->new(
@@ -243,12 +245,15 @@ query/update, and populate C<< $response >> with results or error information.
 				}
 				my $default_graphs	= \@default_graphs;
 				my $planner	= $self->planner;
+
 				if ($self->log->is_trace) {
 					$self->log->debug('Planning with default graphs:');
 					foreach my $g (@$default_graphs) {
 						$self->log->trace($g->as_string);
 					}
 				}
+
+				$planner->suppress_dataset( $protocol_specifies_query_dataset );
 				my $plan	= $planner->plan_for_algebra($algebra, $model, $default_graphs);
 				if ($self->log->is_debug) {
 					$self->log->debug("Plan:\n" . $plan->as_string);
