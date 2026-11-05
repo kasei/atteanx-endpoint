@@ -87,7 +87,7 @@ information.
 		}
 
 # 		my $ae		= $req->headers->header('Accept-Encoding') || '';
-		my ($graph, $new)	= $self->get_gsp_graph($req, $gsp_path);
+		my ($graph, $new, $default)	= $self->get_gsp_graph($req, $gsp_path);
 		unless ($graph) {
 			die AtteanX::Endpoint::ClientError->new(
 				code => 400,
@@ -198,7 +198,9 @@ information.
 		if ($new) {
 			$code	= 201;
 		} elsif ($req->method eq 'PUT') {
-			$code	= $empty_graph ? 201 : 204;
+			# Return 201 Created on empty graphs (these are considered newly created)
+			# unless it's the default graph (which always exists, so can't be "created").
+			$code	= ($empty_graph and not($default)) ? 201 : 204;
 		} elsif ($req->method eq 'POST') {
 			$code	= 204;
 		} elsif ($req->method eq 'DELETE') {
@@ -307,9 +309,11 @@ graph).
 		my $query     = $req->parameters;
 		my $g;
 		my $new		= 0;
+		my $is_default	= 0;
 		if ($req->query_string eq 'default') {
 			my $default	= $self->graph;
 			$g	= $default;
+			$is_default	= 1;
 		} elsif (my $graph = $req->param('graph')) {
 			$g	= iri($graph);
 		} elsif ($direct) {
@@ -319,7 +323,7 @@ graph).
 			$g	= Attean::IRI->new('urn:uuid:' . uc(uuid_to_string(create_uuid())));
 			$new	= 1;
 		}
-		return ($g, $new);
+		return ($g, $new, $is_default);
 	}
 
 =item C<< log_gsp_request( $request ) >>
