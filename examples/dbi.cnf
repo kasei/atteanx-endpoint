@@ -1,3 +1,5 @@
+# Use AtteanX::Store::DBI to connect to an existing MySQL database.
+
 <endpoint>
   <service_description>
     named_graphs = 1

@@ -1,0 +1,19 @@
+# Use AtteanX::Store::Memory2 for non-durable storage
+# Pre-load a dataset into the default graph
+# Allow SPARQL Update requests
+
+<endpoint>
+  <service_description>
+    named_graphs = 1
+    default = 1
+  </service_description>
+  load_data = 0
+  update = 1
+</endpoint>
+<store>
+  name = Memory2
+  load_file = /path/to/datasets/lubm.nt
+</store>
+<dataset>
+  default = http://example.org/default-graph
+</dataset>
