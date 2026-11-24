@@ -120,6 +120,7 @@ package AtteanX::Endpoint {
 			my $file;
 			if (ref($store_conf) eq 'HASH') {
 				my $name	= delete $store_conf->{name};
+				$file		= delete $store_conf->{load_file};
 				my $sclass	= Attean->get_store($name);
 				$store		= $sclass->new( %$store_conf );
 			} else {
@@ -171,15 +172,24 @@ a response object.
 		catch {
 			my $e		= $_;
 			my $resp	= Plack::Response->new;
-			my $code	= $e->code;
-			my $status	= $e->message;
-			my $error	= {
-				title		=> $status,
-				describedby	=> $e->uri,
-			};
-			if (my $d = $e->details) {
-				$error->{details}		= $d;
+			my $error	= {};
+			my ($code, $status);
+			if (ref($e)) {
+				$error->{describedby}	= $e->uri;
+				$code	= $e->code;
+				$status	= $e->message;
+				if (my $d = $e->details) {
+					$error->{details}		= $d;
+				}
+			} else {
+				$code	= 500;
+				$status	= 'Internal Server Error';
+				$error->{message}	= $e;
+				warn $e;
 			}
+			
+			$error->{title}	= $status;
+			
 			my @variants	= (
 				['text/plain', 0.98, 'text/plain'],
 				['application/json-problem', 0.99, 'application/json-problem'],
@@ -194,7 +204,7 @@ a response object.
 			} else {
 				$resp->headers->content_type( 'text/plain' );
 				$resp->status($code);
-				my @messages	= grep { defined($_) } @{ $error }{ qw(title detail) };
+				my @messages	= grep { defined($_) } @{ $error }{ qw(title detail message) };
 				my $content		= join("\n\n", $status, @messages);
 				$resp->body($content);
 			}
