@@ -20,7 +20,7 @@
 my:project
 	a 						:Project ;
 	:name					"AtteanX::Endpoint" ;
-	:shortdesc				"An Attean SPARQL 1.1 Endpoint implementation." ;
+	:shortdesc				"An Attean SPARQL 1.2 Endpoint implementation." ;
 	:programming-language	"Perl" ;
 	:created				"2016-03-25"^^xsd:date ;
 	:maintainer				my:developer ;
@@ -33,7 +33,7 @@ my:project
 
 my:v_0-004
 	a					:Version ;
-	dc:issued			"2026-06-22"^^xsd:date ;
+	dc:issued			"2026-11-24"^^xsd:date ;
 	:revision			"0.004" ;
 	dcterms:replaces	my:v_0-003 ;
 	dcs:changeset [
@@ -41,12 +41,19 @@ my:v_0-004
 		dcs:item
 			[ a dcs:Addition ; rdfs:label "Add example Dockerfile for running a full SPARQL endpoint." ],
 			[ a dcs:Addition ; rdfs:label "Add Test::AtteanX::Endpoint class for shared functionality." ],
+			[ a dcs:Addition ; rdfs:label "Add example config file." ],
 			[ a dcs:Update ; rdfs:label "Replace uses of TryCatch with Try::Tiny; remove unused dependencies." ],
 			[ a dcs:Update ; rdfs:label "Improve SPARQL Graph Store Protocol conformance." ],
 			[ a dcs:Update ; rdfs:label "Improve SPARQL Protocol conformance." ],
 			[ a dcs:Update ; rdfs:label "Improve HTML rendering of SPARQL Protocol HTML results." ],
 			[ a dcs:Update ; rdfs:label "Refactor code and tests, splitting Protocol and GSP handling into separate packages." ],
-			[ a dcs:Update ; rdfs:label "Update dependencies." ]
+			[ a dcs:Update ; rdfs:label "Update dependencies." ],
+			[ a dcs:Update ; rdfs:label "Fix handling of protocol-defined dataset when configuring query planner." ],
+			[ a dcs:Update ; rdfs:label "Fix HTTP response code for PUT to the default graph (201 -> 204)." ],
+			[ a dcs:Update ; rdfs:label "Expand the possible formats for the configuration file." ],
+			[ a dcs:Update ; rdfs:label "Update required version of Attean to 0.041." ],
+			[ a dcs:Update ; rdfs:label "Add support for SPARQL Service Descriptions." ],
+			[ a dcs:Update ; rdfs:label "Fix encoding bug in handling of multipart POST content." ]
 	]
 	.
 

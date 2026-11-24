@@ -3,7 +3,7 @@ use warnings;
 
 =head1 NAME
 
-AtteanX::Endpoint::GraphStoreProtocol - SPARQL 1.1 Graph Store Protocol
+AtteanX::Endpoint::GraphStoreProtocol - SPARQL 1.2 Graph Store Protocol
 
 =head1 VERSION
 

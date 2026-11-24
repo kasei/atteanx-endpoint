@@ -8,7 +8,7 @@ use warnings;
 
 =head1 NAME
 
-AtteanX::Endpoint - SPARQL 1.1 Protocol Endpoint
+AtteanX::Endpoint - SPARQL 1.2 Protocol Endpoint
 
 =head1 VERSION
 
