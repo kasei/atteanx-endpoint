@@ -43,11 +43,12 @@ The L<Attean::API::IRI> of the graph in the model that represents the default gr
 package AtteanX::Endpoint::Protocol 0.004 {
 	use Moo;
 	use Attean;
-	use Encode;
+	use Encode qw(encode_utf8);
 	use Scalar::Util qw(blessed);
 	use Attean::RDF qw(iri);
 	use Attean::DatasetModel;
 	use UUID::Tiny ':std';
+	use Module::Load::Conditional qw(can_load);
 	use Types::Standard qw(ConsumerOf CodeRef HashRef ArrayRef Str Int);
 	use HTML::HTML5::Writer qw(DOCTYPE_XHTML_RDFA);
 	use namespace::clean;
@@ -310,6 +311,104 @@ query/update, and populate C<< $response >> with results or error information.
 			$self->log_error( $req, $content );
 			die AtteanX::Endpoint::ClientError->new(message => 'Missing SPARQL Query/Update String', uri => 'http://id.kasei.us/rdf-endpoint/error/missing_sparql_string');
 		} else {
+			$content	= $self->service_description($req, $response, $type, $dir);
+# 			$response->headers->header('Link', '</sparql-service-description>; rel="service-desc"');
+		}
+	
+		return $content;
+	}
+	
+	sub service_description {
+		my $self		= shift;
+		my $req			= shift;
+		my $response	= shift;
+		my $type		= shift;
+		my $dir			= shift;
+		my $config	= $self->{conf};
+
+		my @serializers;
+		foreach my $sclass (Attean->serializers()) {
+			if (can_load( modules => { $sclass => 0 })) {
+				next unless ($sclass->does('Attean::API::Serializer'));
+				next unless ($sclass->can('canonical_iri'));
+				my $iri	= $sclass->canonical_iri;
+				push(@serializers, "<${iri}>");
+			}
+		}
+		
+		my @functions	= map { "<$_>" } Attean->get_functions();
+		my @aggregates	= map { "<$_>" } Attean->get_aggregates();
+
+		my @features;
+		push(@features, 'sd:DereferencesURIs') if ($config->{endpoint}{load_data});
+
+		my $env			= $req->env;
+		my $sclass		= Attean->get_serializer( media_type => $type );
+		if ($sclass and $sclass->does('Attean::API::TripleSerializer')) {
+			my $host		= $env->{'HTTP_HOST'};
+			my $scheme		= $env->{'psgi.url_scheme'};
+			my $path		= $env->{'PATH_INFO'};
+			my $endpoint	= "${scheme}://${host}${path}";
+			my $prefixes	= <<'END';
+			@prefix sparql: <http://www.w3.org/ns/sparql#> .
+			@prefix sd: <http://www.w3.org/ns/sparql-service-description#> .
+			@prefix void: <http://rdfs.org/ns/void#> .
+END
+			
+			my $formats		= scalar(@serializers) ? 'sd:resultFormat ' . join(', ', @serializers) . ' ;' : '';
+			my $functions	= scalar(@functions) ? 'sd:extensionFunction ' . join(', ', @functions) . ' ;' : '';
+			my $aggregates	= scalar(@aggregates) ? 'sd:extensionAggregate ' . join(', ', @aggregates) . ' ;' : '';
+			my $features	= scalar(@features) ? 'sd:feature ' . join(', ', @features) . ' ;' : '';
+			
+			my $ttl	= <<"END";
+				
+				${prefixes}
+				[] a sd:Service ;
+					sd:endpoint <${endpoint}> ;
+					sd:supportedLanguage sd:SPARQLQuery ;
+					sd:supportedVersion sparql:version-1.2, sparql:version-1.2-basic, sparql:version-1.1, sparql:version-1.0 ;
+
+					$formats
+
+					${functions}
+					${aggregates}
+					${features}
+					
+					.
+END
+
+# TODO dataset details:
+# 					sd:defaultDataset [
+# 						a sd:Dataset ;
+# 						sd:defaultGraph [
+# 							a sd:Graph ;
+# 							void:triples 100
+# 						] ;
+# 						sd:namedGraph [
+# 							a sd:NamedGraph ;
+# 							sd:name <http://www.example/named-graph> ;
+# 							sd:graph [
+# 								a sd:Graph ;
+# 								void:triples 2000
+# 							]
+# 						]
+# 					] ;
+
+
+			my $parser	= Attean->get_parser('Turtle')->new();
+			my $iter = $parser->parse_iter_from_bytes(encode_utf8($ttl));
+			my $map		= URI::NamespaceMap->new( {
+				'sparql'	=> iri('http://www.w3.org/ns/sparql#'),
+				'sd'		=> iri('http://www.w3.org/ns/sparql-service-description#'),
+				'void'		=> iri('http://rdfs.org/ns/void#'),
+				'rdf'		=> iri('http://www.w3.org/1999/02/22-rdf-syntax-ns#'),
+			} );
+			my $ser	= $sclass->new( namespaces => $map );
+
+			$response->status(200);
+			$response->headers->content_type($type);
+			return $ser->serialize_iter_to_bytes($iter);
+		} else {
 			my $stype		= 'text/html';
 			my $template	= File::Spec->catfile($dir, 'index.html');
 			my $parser		= XML::LibXML->new(validation => 0, suppress_errors => 1, no_network => 1, recover => 2);
@@ -318,14 +417,13 @@ query/update, and populate C<< $response >> with results or error information.
 # 			$gen->inject_document($doc, $sdmodel);
 		
 			my $writer	= HTML::HTML5::Writer->new( markup => 'xhtml', doctype => DOCTYPE_XHTML_RDFA );
-			$content	= encode_utf8( $writer->document($doc) );
+			my $content	= encode_utf8( $writer->document($doc) );
 			$response->status(200);
 			$response->headers->content_type('text/html');
+			return $content;
 		}
-	
-		return $content;
 	}
-	
+
 =item C<< log_query ( $request, $sparql ) >>
 
 Log the C<< $sparql >> query string after having been parsed from the
