@@ -44,6 +44,7 @@ package AtteanX::Endpoint::GraphStoreProtocol 0.004 {
 	use Moo;
 	use Attean;
 	use Attean::RDF qw(iri);
+	use Encode qw(encode);
 	use UUID::Tiny ':std';
 	use Types::Standard qw(ConsumerOf CodeRef HashRef ArrayRef Str Int);
 	use namespace::clean;
@@ -128,7 +129,13 @@ information.
 					foreach my $file (keys %$uploads) {
 						my $f	= $uploads->get($file);
 						my $ct	= $f->content_type;
-						open(my $fh, '<:utf8', $f->path);
+						my $ok	= open(my $fh, '<:raw', $f->path);
+						unless ($ok) {
+							die AtteanX::Endpoint::ServerError->new(
+								code => 500,
+								message => "Failed to open uploaded file in GSP request", uri => 'http://id.kasei.us/rdf-endpoint/error/gsp_upload_error'
+							);
+						}
 						my $insert	= $self->update_for_io($req, $graph, $ct, $fh);
 						push(@ops, $insert);
 					}
@@ -144,7 +151,7 @@ information.
 					}
 					
 					my $parser	= $pclass->new();
-					my $iter = eval { $parser->parse_iter_from_io($req->body) };
+					my $iter = eval { $parser->parse_iter_from_bytes($req->content) };
 					if ($@) {
 						die AtteanX::Endpoint::ClientError->new(
 							code => 400,
@@ -254,6 +261,10 @@ Parses RDF content of type C<< $content_type >> from C<< $io >>, and inserts
 it into the specified C<< $graph >>, clearing that graph first if
 C<< $request->method >> is 'PUT'.
 
+C<< $io >> is expected to be a byte-oriented filehandle (one opened with the
+C<< :raw >> layer, for example). A handle carrying a character encoding layer
+is also accepted, as its contents are re-encoded to UTF-8 before parsing.
+
 =cut
 	
 	sub update_for_io {
@@ -262,6 +273,8 @@ C<< $request->method >> is 'PUT'.
 		my $graph	= shift;
 		my $ct		= shift;
 		my $io		= shift;
+		my $bytes	= do { local $/; <$io> } // '';
+		$bytes		= encode('UTF-8', $bytes) if (utf8::is_utf8($bytes));
 		my $pclass	= Attean->get_parser(media_type => $ct) // Attean->get_parser('turtle');
 		unless ($pclass) {
 			die AtteanX::Endpoint::ClientError->new(
@@ -271,7 +284,7 @@ C<< $request->method >> is 'PUT'.
 		}
 		
 		my $parser	= $pclass->new();
-		my $iter = eval { $parser->parse_iter_from_io($io) };
+		my $iter = eval { $parser->parse_iter_from_bytes($bytes) };
 		if ($@) {
 			die AtteanX::Endpoint::ClientError->new(
 				code => 400,
