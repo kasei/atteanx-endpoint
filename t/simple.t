@@ -47,9 +47,9 @@ sub mech_for_nquads {
 
 
 my $mech	= mech_for_nquads(<<"END");
-_:b <num> "123" <http://example.org/graph> .
-_:b <num> "787" <http://example.org/graph> .
-<doc> <name> "My Document" <http://example.org/graph2> .
+_:b <http://example.org/num> "123" <http://example.org/graph> .
+_:b <http://example.org/num> "787" <http://example.org/graph> .
+<http://example.org/doc> <http://example.org/name> "My Document" <http://example.org/graph2> .
 END
 
 subtest 'POST query for default graph' => sub {

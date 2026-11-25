@@ -18,7 +18,7 @@ test_requires	'Test::LWP::UserAgent'			=> 0;
 test_requires	'Test::WWW::Mechanize::PSGI'	=> 0;
 perl_version	'5.014';
 
-requires		'Attean'						=> 0.039;
+requires		'Attean'						=> 0.041;
 requires		'File::ShareDir'				=> 0;
 requires		'HTML::HTML5::Writer'			=> 0;
 requires		'HTTP::Negotiate'				=> 0;

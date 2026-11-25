@@ -3,11 +3,11 @@ use warnings;
 
 =head1 NAME
 
-AtteanX::Endpoint::GraphStoreProtocol - SPARQL 1.1 Graph Store Protocol
+AtteanX::Endpoint::GraphStoreProtocol - SPARQL 1.2 Graph Store Protocol
 
 =head1 VERSION
 
-This document describes AtteanX::Endpoint::GraphStoreProtocol version 0.003
+This document describes AtteanX::Endpoint::GraphStoreProtocol version 0.004
 
 =head1 SYNOPSIS
 
@@ -40,10 +40,11 @@ The L<Attean::API::IRI> of the graph in the model that represents the default gr
 
 =cut
 
-package AtteanX::Endpoint::GraphStoreProtocol 0.003 {
+package AtteanX::Endpoint::GraphStoreProtocol 0.004 {
 	use Moo;
 	use Attean;
 	use Attean::RDF qw(iri);
+	use Encode qw(encode);
 	use UUID::Tiny ':std';
 	use Types::Standard qw(ConsumerOf CodeRef HashRef ArrayRef Str Int);
 	use namespace::clean;
@@ -87,7 +88,7 @@ information.
 		}
 
 # 		my $ae		= $req->headers->header('Accept-Encoding') || '';
-		my ($graph, $new)	= $self->get_gsp_graph($req, $gsp_path);
+		my ($graph, $new, $default)	= $self->get_gsp_graph($req, $gsp_path);
 		unless ($graph) {
 			die AtteanX::Endpoint::ClientError->new(
 				code => 400,
@@ -128,7 +129,13 @@ information.
 					foreach my $file (keys %$uploads) {
 						my $f	= $uploads->get($file);
 						my $ct	= $f->content_type;
-						open(my $fh, '<:utf8', $f->path);
+						my $ok	= open(my $fh, '<:raw', $f->path);
+						unless ($ok) {
+							die AtteanX::Endpoint::ServerError->new(
+								code => 500,
+								message => "Failed to open uploaded file in GSP request", uri => 'http://id.kasei.us/rdf-endpoint/error/gsp_upload_error'
+							);
+						}
 						my $insert	= $self->update_for_io($req, $graph, $ct, $fh);
 						push(@ops, $insert);
 					}
@@ -144,7 +151,7 @@ information.
 					}
 					
 					my $parser	= $pclass->new();
-					my $iter = eval { $parser->parse_iter_from_io($req->body) };
+					my $iter = eval { $parser->parse_iter_from_bytes($req->content) };
 					if ($@) {
 						die AtteanX::Endpoint::ClientError->new(
 							code => 400,
@@ -198,7 +205,9 @@ information.
 		if ($new) {
 			$code	= 201;
 		} elsif ($req->method eq 'PUT') {
-			$code	= $empty_graph ? 201 : 204;
+			# Return 201 Created on empty graphs (these are considered newly created)
+			# unless it's the default graph (which always exists, so can't be "created").
+			$code	= ($empty_graph and not($default)) ? 201 : 204;
 		} elsif ($req->method eq 'POST') {
 			$code	= 204;
 		} elsif ($req->method eq 'DELETE') {
@@ -252,6 +261,10 @@ Parses RDF content of type C<< $content_type >> from C<< $io >>, and inserts
 it into the specified C<< $graph >>, clearing that graph first if
 C<< $request->method >> is 'PUT'.
 
+C<< $io >> is expected to be a byte-oriented filehandle (one opened with the
+C<< :raw >> layer, for example). A handle carrying a character encoding layer
+is also accepted, as its contents are re-encoded to UTF-8 before parsing.
+
 =cut
 	
 	sub update_for_io {
@@ -260,6 +273,8 @@ C<< $request->method >> is 'PUT'.
 		my $graph	= shift;
 		my $ct		= shift;
 		my $io		= shift;
+		my $bytes	= do { local $/; <$io> } // '';
+		$bytes		= encode('UTF-8', $bytes) if (utf8::is_utf8($bytes));
 		my $pclass	= Attean->get_parser(media_type => $ct) // Attean->get_parser('turtle');
 		unless ($pclass) {
 			die AtteanX::Endpoint::ClientError->new(
@@ -269,7 +284,7 @@ C<< $request->method >> is 'PUT'.
 		}
 		
 		my $parser	= $pclass->new();
-		my $iter = eval { $parser->parse_iter_from_io($io) };
+		my $iter = eval { $parser->parse_iter_from_bytes($bytes) };
 		if ($@) {
 			die AtteanX::Endpoint::ClientError->new(
 				code => 400,
@@ -307,9 +322,11 @@ graph).
 		my $query     = $req->parameters;
 		my $g;
 		my $new		= 0;
+		my $is_default	= 0;
 		if ($req->query_string eq 'default') {
 			my $default	= $self->graph;
 			$g	= $default;
+			$is_default	= 1;
 		} elsif (my $graph = $req->param('graph')) {
 			$g	= iri($graph);
 		} elsif ($direct) {
@@ -319,7 +336,7 @@ graph).
 			$g	= Attean::IRI->new('urn:uuid:' . uc(uuid_to_string(create_uuid())));
 			$new	= 1;
 		}
-		return ($g, $new);
+		return ($g, $new, $is_default);
 	}
 
 =item C<< log_gsp_request( $request ) >>

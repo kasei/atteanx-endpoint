@@ -11,10 +11,10 @@ use Test::WWW::Mechanize::PSGI;
 use Test::AtteanX::Endpoint;
 
 my $mech	= Test::AtteanX::Endpoint->mech_for_nquads(update => 1, gsp_path => '/custom/gsp_path', <<"END");
-_:b <num> "000" .
-_:b <num> "123" <http://example.org/graph1> .
-_:b <num> "787" <http://example.org/graph2> .
-<doc> <name> "My Document" <http://example.org/graph3> .
+_:b <http://example.org/num> "000" .
+_:b <http://example.org/num> "123" <http://example.org/graph1> .
+_:b <http://example.org/num> "787" <http://example.org/graph2> .
+<http://example.org/doc> <http://example.org/name> "My Document" <http://example.org/graph3> .
 END
 
 subtest 'HEAD default graph (default endpoint)' => sub {

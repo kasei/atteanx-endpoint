@@ -8,11 +8,11 @@ use warnings;
 
 =head1 NAME
 
-AtteanX::Endpoint - SPARQL 1.1 Protocol Endpoint
+AtteanX::Endpoint - SPARQL 1.2 Protocol Endpoint
 
 =head1 VERSION
 
-This document describes AtteanX::Endpoint version 0.003
+This document describes AtteanX::Endpoint version 0.004
 
 =head1 SYNOPSIS
 
@@ -58,7 +58,7 @@ The L<Attean::API::IRI> of the graph in the model that represents the default gr
 =cut
 
 package AtteanX::Endpoint {
-	our $VERSION	= "0.003";
+	our $VERSION	= "0.004";
 	use Moo;
 	use Attean;
 	use Attean::RDF qw(iri);
@@ -116,13 +116,26 @@ package AtteanX::Endpoint {
 			# ->new( \%conf )
 			my $conf		= shift @params;
 			my $store_conf	= $conf->{store};
-			my ($name_, $file)	= split(';', $store_conf, 2);
-			my ($name, @args)	= split('=', $name_);
-			my $sclass	= Attean->get_store($name);
-			my $store	= $sclass->new(@args);
+			my $store;
+			my $file;
+			if (ref($store_conf) eq 'HASH') {
+				my $name	= delete $store_conf->{name};
+				$file		= delete $store_conf->{load_file};
+				my $sclass	= Attean->get_store($name);
+				$store		= $sclass->new( %$store_conf );
+			} else {
+				(my $name_, $file)	= split(';', $store_conf, 2);
+				my ($name, @args)	= split('=', $name_);
+				my $sclass	= Attean->get_store($name);
+				$store	= $sclass->new(@args);
+			}
 			my $model	= Attean::MutableQuadModel->new( store => $store );
 			
-			my $graph	= Attean::IRI->new('http://example.org/graph');
+			my $guri	= 'http://example.org/default-graph';
+			if (my $dataset = $conf->{dataset}) {
+				$guri	= $dataset->{default};
+			}
+			my $graph	= Attean::IRI->new($guri);
 			if (defined($file) and length($file)) {
 				$graph		= Attean::IRI->new('file://' . File::Spec->rel2abs($file));
 				open(my $fh, '<:encoding(UTF-8)', $file) or die $!;
@@ -159,15 +172,24 @@ a response object.
 		catch {
 			my $e		= $_;
 			my $resp	= Plack::Response->new;
-			my $code	= $e->code;
-			my $status	= $e->message;
-			my $error	= {
-				title		=> $status,
-				describedby	=> $e->uri,
-			};
-			if (my $d = $e->details) {
-				$error->{details}		= $d;
+			my $error	= {};
+			my ($code, $status);
+			if (ref($e)) {
+				$error->{describedby}	= $e->uri;
+				$code	= $e->code;
+				$status	= $e->message;
+				if (my $d = $e->details) {
+					$error->{details}		= $d;
+				}
+			} else {
+				$code	= 500;
+				$status	= 'Internal Server Error';
+				$error->{message}	= $e;
+				warn $e;
 			}
+			
+			$error->{title}	= $status;
+			
 			my @variants	= (
 				['text/plain', 0.98, 'text/plain'],
 				['application/json-problem', 0.99, 'application/json-problem'],
@@ -182,7 +204,7 @@ a response object.
 			} else {
 				$resp->headers->content_type( 'text/plain' );
 				$resp->status($code);
-				my @messages	= grep { defined($_) } @{ $error }{ qw(title detail) };
+				my @messages	= grep { defined($_) } @{ $error }{ qw(title detail message) };
 				my $content		= join("\n\n", $status, @messages);
 				$resp->body($content);
 			}
@@ -290,7 +312,7 @@ header on $response.
 	}
 }
 
-package Plack::App::AtteanX::Endpoint 0.003 {
+package Plack::App::AtteanX::Endpoint 0.004 {
 	use parent qw(Plack::Component);
 	use Plack::Request;
 	
